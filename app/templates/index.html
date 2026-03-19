@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BINGO — Multiplayer Game</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">🎲BINGO-byBhagavanzone</div>
+            <div id="headerMeta" class="header-meta hidden">
+                <span class="badge badge-room">Room: <strong id="hRoomCode">-</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- NOTIFICATIONS -->
+    <div id="notifContainer"></div>
+
+    <div class="container">
+
+        <!-- ===== WELCOME SCREEN ===== -->
+        <div id="screenWelcome" class="screen active">
+            <div class="welcome-wrap">
+                <div class="hero-icon">🎲</div>
+                <h1 class="hero-title">Bingo</h1>
+                <p class="hero-sub">Real-time multiplayer bingo — create a room, match numbers, compete!</p>
+                <div class="home-grid">
+                    <!-- Create -->
+                    <div class="home-card">
+                        <h2>🎮 Create Room</h2>
+                        <div class="form-group">
+                            <label>Your Name</label>
+                            <input type="text" id="createName" placeholder="e.g. Alice" maxlength="20">
+                        </div>
+                        <!-- Grid selection removed from welcome screen -->
+                        <button class="btn btn-primary btn-full mt1" id="btn-create-room">🚀 Create Room</button>
+                    </div>
+                    <!-- Join -->
+                    <div class="home-card">
+                        <h2>📱 Join Room</h2>
+                        <div class="form-group">
+                            <label>Your Name</label>
+                            <input type="text" id="joinName" placeholder="e.g. Bob" maxlength="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Room Code</label>
+                            <input type="text" id="joinCode" placeholder="e.g. ABC123" maxlength="6"
+                                oninput="this.value=this.value.toUpperCase()">
+                        </div>
+                        <button class="btn btn-accent btn-full mt1" id="btn-join-room">🔗 Join Room</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== LOBBY / WAITING SCREEN ===== -->
+        <div id="screenLobby" class="screen">
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div class="card">
+                    <div class="room-code-display">
+                        <div class="text-muted" style="font-size:.82rem;margin-bottom:.4rem;">ROOM CODE</div>
+                        <div class="room-code-val" id="display-room-code">------</div>
+                        <div id="lobbyGridInfo" class="text-muted mt1" style="font-weight:600;">Grid: <span id="display-grid-size">5x5</span></div>
+                    </div>
+                    
+                    <h2 class="card-title text-center" id="lobby-status-text" style="justify-content: center; margin-top: 1rem;">Waiting for Player 2...</h2>
+                    
+                    <div class="sep"></div>
+                    <div class="card-title">👥 Players</div>
+                    <div class="players-list" id="lobbyPlayers">
+                        <!-- Filled by JS -->
+                    </div>
+
+                    <div id="hostControls" class="hidden mt2">
+                        <div class="form-group mb1">
+                            <label style="display:block;margin-bottom:.5rem;font-weight:600;">Select Grid Size</label>
+                            <select id="gridSize" class="select-modern" style="width:100%;padding:.8rem;border-radius:12px;margin-bottom:1rem;">
+                                <option value="4">4x4 Grid</option>
+                                <option value="5" selected>5x5 Grid (Classic)</option>
+                                <option value="8">8x8 Grid</option>
+                                <option value="10">10x10 Grid</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-full" id="btn-start-game">🎮 Start Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== GAME SCREEN ===== -->
+        <div id="screenGame" class="screen">
+            <div class="game-grid">
+                
+                <!-- Turn Indicator -->
+                <div id="turn-indicator" class="turn-banner">
+                    Waiting for turn...
+                </div>
+
+                <!-- Bingo Board -->
+                <div class="bingo-board-container card">
+                    <div class="bingo-header">
+                        <span id="letter-B" class="bingo-letter">B</span>
+                        <span id="letter-I" class="bingo-letter">I</span>
+                        <span id="letter-N" class="bingo-letter">N</span>
+                        <span id="letter-G" class="bingo-letter">G</span>
+                        <span id="letter-O" class="bingo-letter">O</span>
+                    </div>
+
+                    <!-- The Grid -->
+                    <div id="bingo-grid" class="bingo-grid">
+                        <!-- Cells generated by JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div class="modal-bg" id="gameOverModal">
+        <div class="modal-box">
+            <div class="hero-icon" style="font-size: 3rem;">🏆</div>
+            <div class="modal-title" id="winner-text">You are the winner!</div>
+            <p class="text-muted" style="margin-bottom: 2rem;">The game has finished.</p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-primary" style="flex:1" onclick="requestPlayAgain()">Play Again</button>
+                <button class="btn btn-outline" style="flex:1" onclick="confirmLeave()">Leave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEAVE CONFIRM MODAL -->
+    <div class="modal-bg" id="leaveGameModal">
+        <div class="modal-box">
+            <div class="hero-icon" style="font-size: 3rem;">🚪</div>
+            <div class="modal-title">Leave Game?</div>
+            <p class="text-muted" style="margin-bottom: 2rem;">Are you sure you want to exit and return to the landing page?</p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-primary" style="flex:1" onclick="location.reload()">Exit</button>
+                <button class="btn btn-outline" style="flex:1" onclick="cancelLeave()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer style="margin-top:3rem;padding:1.5rem;text-align:center;border-top:1px solid var(--glass-border);color:var(--muted);font-size:.8rem;">
+        Designed &amp; Developed by <strong style="color:var(--primary-light);">Bhagavan &amp; Team</strong> · © 2026 BhagavanZone
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
